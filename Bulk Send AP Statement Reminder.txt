@@ -1,0 +1,90 @@
+Sub SendEmails()
+    On Error Resume Next ' Enable error handling
+    
+    Dim OutApp As Object
+    Dim OutMail As Object
+    Dim ws As Worksheet
+    Dim LastRow As Long
+    Dim RowIndex As Long
+    Dim EmailAddress As String
+    Dim FromAddress As String
+    Dim FilePath As String
+    Dim Vendor As String
+    Dim SkipVendor As String
+    Dim MonthYear As String
+    Dim Preview As VbMsgBoxResult
+    Dim Confirmation As VbMsgBoxResult
+
+    
+    FromAddress = "davidm@reviverx.com"
+
+    ' Create an Outlook application object
+    Set OutApp = CreateObject("Outlook.Application")
+
+    ' Select worksheet
+    Set ws = ThisWorkbook.Sheets("Vendor List")
+
+    ' find last row
+    LastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+
+    ' Prompt the user to enter the month and year
+    MonthYear = InputBox("Enter the Month and Year (e.g., October 2023):")
+
+    ' Loop through each row in the worksheet where you have email addresses, vendor names, file paths, and skip vendor indicator
+    For RowIndex = 2 To LastRow
+        ' Get the Vendor name, email address, and skip vendor indicator from the current row
+        Vendor = ws.Cells(RowIndex, "B").Value
+        FromAddress = ws.Cells(RowIndex, "C").Value
+        EmailAddress = ws.Cells(RowIndex, "D").Value
+        SkipVendor = ws.Cells(RowIndex, "E").Value
+
+        ' Check if any of the cells in columns A, B, or D are blank (empty) or if Skip Vendor is "Y"
+        If Not IsEmpty(Vendor) And Not IsEmpty(EmailAddress) And UCase(SkipVendor) <> "Y" Then
+            ' Create a new email
+            Set OutMail = OutApp.CreateItem(0)
+
+            ' Set email properties
+            With OutMail
+                .To = EmailAddress
+                .Subject = "Monthly Request for Statements and Invoices - " & MonthYear
+                .Body = "Dear " & Vendor & " team," & vbCrLf & vbCrLf & _
+                        "I hope this email finds you well. As part of our regular monthly reconciliation process, we kindly request that you provide us with all available statements and invoices for the month of " & MonthYear & "." & vbCrLf & vbCrLf & _
+                        "Your prompt attention to this matter is highly appreciated. If you have any questions or require further assistance, please feel free to contact us." & vbCrLf & vbCrLf & _
+                        "Thank you for your cooperation." & vbCrLf & vbCrLf & _
+                        "Best regards," & vbCrLf & _
+                        "AP" ' Replace with your actual name or signature
+
+                ' Attach the PDF file if it exists
+                FilePath = ws.Cells(RowIndex, "C").Value ' Move this inside the loop
+                If Dir(FilePath) <> "" Then
+                    .Attachments.Add FilePath
+                End If
+
+                ' Set the sender's email address
+                .SentOnBehalfOfName = FromAddress
+
+                ' Prompt the user to preview the email
+                Preview = MsgBox("Do you want to preview the email for " & Vendor & " before sending? (Y/N)", vbYesNo + vbQuestion, "Preview Email")
+
+                If Preview = vbYes Then
+                    .Display ' Display the email for preview
+
+                    ' Prompt the user for confirmation
+                    Confirmation = MsgBox("Is everything correct (Y/N)?", vbYesNo + vbQuestion, "Confirmation")
+                    If Confirmation = vbYes Then
+                        .Send ' Send the email
+                    End If
+                Else
+                    .Send ' Send the email without previewing
+                End If
+            End With
+        End If
+    Next RowIndex
+
+    ' Release the Outlook application object
+    Set OutApp = Nothing
+
+    On Error GoTo 0 ' Disable error handling
+End Sub
+
+
